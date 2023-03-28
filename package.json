@@ -6,7 +6,7 @@
   "dependencies": {},
   "devDependencies": {
     "chai": "^4.3.6",
-    "circomlib": "^2.0.3",
+    "circomlib": "^2.0.5",
     "circomlibjs": "^0.1.2",
     "hardhat": "^2.9.1",
     "hardhat-circom": "^3.3.2"
