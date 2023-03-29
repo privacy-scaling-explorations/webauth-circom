@@ -120,6 +120,57 @@ function getProperRepresentation(m, n, k, in) {
     return out;
 }
 
+// Evaluate polynomial a at point x
+function poly_eval(len, a, x) {
+    var v = 0;
+    for (var i = 0; i < len; i++) {
+        v += a[i] * (x ** i);
+    }
+    return v;
+}
+
+// Interpolate a degree len-1 polynomial given its evaluations at 0..len-1
+function poly_interp(len, v) {
+    assert(len <= 200);
+    var out[200];
+    for (var i = 0; i < len; i++) {
+        out[i] = 0;
+    }
+
+    // Product_{i=0..len-1} (x-i)
+    var full_poly[201];
+    full_poly[0] = 1;
+    for (var i = 0; i < len; i++) {
+        full_poly[i+1] = 0;
+        for (var j = i; j >= 0; j--) {
+            full_poly[j+1] += full_poly[j];
+            full_poly[j] *= -i;
+        }
+    }
+
+    for (var i = 0; i < len; i++) {
+        var cur_v = 1;
+        for (var j = 0; j < len; j++) {
+            if (i == j) {
+                // do nothing
+            } else {
+                cur_v *= i-j;
+            }
+        }
+        cur_v = v[i] / cur_v;
+
+        var cur_rem = full_poly[len];
+        for (var j = len-1; j >= 0; j--) {
+            out[j] += cur_v * cur_rem;
+            cur_rem = full_poly[j] + i * cur_rem;
+        }
+        assert(cur_rem == 0);
+    }
+
+    return out;
+}
+
+
 // 1 if true, 0 if false
 function long_gt(n, k, a, b) {
     for (var i = k - 1; i >= 0; i--) {
