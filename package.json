@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "@peculiar/asn1-ecc": "^2.3.6",
+    "@peculiar/asn1-schema": "^2.3.6",
+    "@types/node": "^18.15.11",
+    "cbor-x": "^1.5.1",
+    "typescript": "^5.0.2"
+  },
   "devDependencies": {
     "chai": "^4.3.6",
     "circomlib": "^2.0.5",
@@ -17,6 +23,7 @@
   "scripts": {
     "circom:dev": "hardhat circom --deterministic --debug --verbose",
     "circom:prod": "hardhat circom --verbose",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "inputs": "npx ts-node ./test/generate_inputs.ts"
   }
 }
