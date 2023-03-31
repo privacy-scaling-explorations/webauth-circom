@@ -1,7 +1,7 @@
 import * as cborx from "cbor-x";
 import { COSEPublicKeyEC2, COSEPublicKey, COSEKEYS } from "./cose";
-import { AsnParser } from '@peculiar/asn1-schema';
-import { ECDSASigValue } from '@peculiar/asn1-ecc';
+import { AsnParser } from "@peculiar/asn1-schema";
+import { ECDSASigValue } from "@peculiar/asn1-ecc";
 
 import * as fs from "fs";
 
@@ -18,14 +18,14 @@ import * as fs from "fs";
 */
 
 type PublicKey = {
-  x: Uint8Array, 
-  y: Uint8Array
-}
+  x: Uint8Array;
+  y: Uint8Array;
+};
 
 type UnwrappedEC2Sig = {
-  r: Uint8Array, 
-  s: Uint8Array
-}
+  r: Uint8Array;
+  s: Uint8Array;
+};
 
 const encoder = new cborx.Encoder({
   mapsAsObjects: false,
@@ -97,7 +97,7 @@ async function Uint8ArrayToCharArray(a: Uint8Array): Promise<string[]> {
 }
 
 // k registers of n bits (4 registers of 64 bits)
-function CharArrayToRegisters(a_inter: string[]) : string[] {
+function CharArrayToRegisters(a_inter: string[]): string[] {
   let a = [] as string[];
   for (var i = 0; i < a_inter.length; i += 8) {
     let temp: string = "";
@@ -109,89 +109,96 @@ function CharArrayToRegisters(a_inter: string[]) : string[] {
   return a;
 }
 
-const MAX_CHALLENGE = 100
-const MAX_CLIENT_JSON = 512
-const MAX_AUTH_DATA = 512
+const MAX_CHALLENGE = 100;
+const MAX_CLIENT_JSON = 512;
+const MAX_AUTH_DATA = 512;
 
 async function getCircuitInputs(
   sig: UnwrappedEC2Sig,
   publicKey: PublicKey,
   challengeInput: string,
   challengeOffset: Number,
-  clientDataJson: Uint8Array,
+  challengeEnd: Number,
+  clientDataJson: string,
   authenticatorData: string[]
-  ) {
-    // console.log("Starting processing of inputs");
-    // console.log(authenticatorData.toString())
-    // const hi = new TextEncoder().encode(authenticatorData.toString())
+) {
 
-    // PAD client_data_json
-    const [clientDataPadded, clientDataPaddedLen] = await sha256Pad(
-      clientDataJson,
-      MAX_CLIENT_JSON
-    );
+  // console.log("authenticatorData")
+  // console.log(authenticatorData)
+  // PAD client_data_json
+  const [clientDataPadded, clientDataPaddedLen] = await sha256Pad(
+    new TextEncoder().encode(clientDataJson),
+    MAX_CLIENT_JSON
+  );
 
-    // PAD challenge 
-    const [challengePadded, challengePaddedLen] = await sha256Pad(
-      new TextEncoder().encode(challengeInput),
-      MAX_CHALLENGE
-    );
+  // PAD challenge
+  const [challengePadded, challengePaddedLen] = await sha256Pad(
+    new TextEncoder().encode(challengeInput),
+    MAX_CHALLENGE
+  );
 
-    // PAD authenticator_data
-    const [authDataPadded, authDataPaddedLen] = await sha256Pad(
-      new TextEncoder().encode(authenticatorData.join("")), 
-      MAX_AUTH_DATA
-    )
-
-    // Compute identity revealer
-    let circuitInputs;
-
-    const challenge = await Uint8ArrayToCharArray(challengePadded); 
-    const authenticator_data = await Uint8ArrayToCharArray(authDataPadded); 
-    const client_data_json = await Uint8ArrayToCharArray(clientDataPadded); 
-    
-    const r_inter = await Uint8ArrayToCharArray(sig.r);
-    const r = CharArrayToRegisters(r_inter);
-    
-    const s_inter = await Uint8ArrayToCharArray(sig.s);
-    const s = CharArrayToRegisters(s_inter);
-
-    const xCircom = await Uint8ArrayToCharArray(publicKey.x);
-    const yCircom = await Uint8ArrayToCharArray(publicKey.y);
-
-    const x = CharArrayToRegisters(xCircom);
-    const y = CharArrayToRegisters(yCircom);
-
-    const pubkey = new Array(2)
-    pubkey[0] = x
-    pubkey[1] = y
-
-    const challenge_offset = challengeOffset.toString();
-
-    circuitInputs = {
-      pubkey,
-      r,
-      s,
-      challenge,
-      client_data_json,
-      challenge_offset, 
-      authenticator_data
-
-    }
-    return circuitInputs;
+  // PAD authenticator_data
+  // const [authDataPadded, authDataPaddedLen] = await sha256Pad(
+  //   new TextEncoder().encode(authenticatorData.join("")),
+  //   MAX_AUTH_DATA
+  // );
+  while(authenticatorData.length < MAX_AUTH_DATA) {
+    authenticatorData.push("0")
   }
 
+  const authDataPadded = authenticatorData;
+
+  // Compute identity revealer
+  let circuitInputs;
+  // console.log("authDataPadded")
+  // console.log(authDataPadded)
+  const challenge = await Uint8ArrayToCharArray(challengePadded);
+  const authenticator_data = authDataPadded;
+  const client_data_json = await Uint8ArrayToCharArray(clientDataPadded);
+
+  const r_inter = await Uint8ArrayToCharArray(sig.r);
+  const r = CharArrayToRegisters(r_inter);
+
+  const s_inter = await Uint8ArrayToCharArray(sig.s);
+  const s = CharArrayToRegisters(s_inter);
+
+  const xCircom = await Uint8ArrayToCharArray(publicKey.x);
+  const yCircom = await Uint8ArrayToCharArray(publicKey.y);
+
+  const x = CharArrayToRegisters(xCircom);
+  const y = CharArrayToRegisters(yCircom);
+
+  const pubkey = new Array(2);
+  pubkey[0] = x;
+  pubkey[1] = y;
+
+  const challenge_offset = challengeOffset.toString();
+  const challenge_end = challengeEnd.toString();
+
+  circuitInputs = {
+    pubkey,
+    r,
+    s,
+    challenge,
+    client_data_json,
+    challenge_offset,
+    challenge_end,
+    authenticator_data,
+  };
+  return circuitInputs;
+}
+
 /**  Pass in Uint8Array public key! Returns a COSEPublicKey **/
-function decodeCredentialPublicKey(publicKey: Uint8Array) : COSEPublicKeyEC2 {
+function decodeCredentialPublicKey(publicKey: Uint8Array): COSEPublicKeyEC2 {
   return decodeFirst<COSEPublicKeyEC2>(publicKey);
 }
 
 /**  Pass in Uint8Array public key! Returns a COSEPublicKey **/
-function decodeFirst<Type>(input : Uint8Array) : Type{
+function decodeFirst<Type>(input: Uint8Array): Type {
   const decoded = encoder.decodeMultiple(input) as undefined | Type[];
 
   if (decoded === undefined) {
-    throw new Error('CBOR input data was empty');
+    throw new Error("CBOR input data was empty");
   }
 
   const [first] = decoded;
@@ -201,14 +208,13 @@ function decodeFirst<Type>(input : Uint8Array) : Type{
   return first;
 }
 
-function extractXY(cosePublicKey: COSEPublicKeyEC2) : PublicKey {
-
+function extractXY(cosePublicKey: COSEPublicKeyEC2): PublicKey {
   const x = cosePublicKey.get(COSEKEYS.x);
   const y = cosePublicKey.get(COSEKEYS.y);
 
   return {
-    x, 
-    y
+    x,
+    y,
   } as PublicKey;
 }
 
@@ -239,16 +245,16 @@ function unwrapEC2Signature(signature: Uint8Array): UnwrappedEC2Sig {
   // const finalSignature = isoUint8Array.concat([rBytes, sBytes]);
 
   return {
-    r: rBytes, 
-    s: sBytes
+    r: rBytes,
+    s: sBytes,
   };
 }
 
-function byteString(n : number) {
+function byteString(n: number) {
   if (n < 0 || n > 255 || n % 1 !== 0) {
-      throw new Error(n + " does not fit in a byte");
+    throw new Error(n + " does not fit in a byte");
   }
-  return ("000000000" + n.toString(2)).substr(-8)
+  return ("000000000" + n.toString(2)).substr(-8);
 }
 
 export async function generate_inputs() {
@@ -262,11 +268,11 @@ export async function generate_inputs() {
   ]);
 
   const decodedPubkey = decodeCredentialPublicKey(pubkeyArray);
-  const pubkey = extractXY(decodedPubkey)
+  const pubkey = extractXY(decodedPubkey);
 
   // console.log("extracted x y")
   // console.log(pubkey)
-  
+
   /* SIGNATURE */
   const signature =
     "MEQCIE3GC4J3W4iKrKk1BmjDMOB8awXNBcBg1yWNzlGVPzi2AiAiIoN_rZf1o8BXP4OsR6PTsZx6poe77ymy7ddRw8Xyig";
@@ -285,35 +291,48 @@ export async function generate_inputs() {
   /* CLIENT DATA JSON */
   // TODO: might need base64url conversion stuff
   const client_data_json =
-    "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiR0cyRGdLNkFPelJJOUJZdGNVUGdkaTFZRFVlVlVVQnEtVW1GeFpCbU9YSSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6MzAwMCIsImNyb3NzT3JpZ2luIjpmYWxzZSwib3RoZXJfa2V5c19jYW5fYmVfYWRkZWRfaGVyZSI6ImRvIG5vdCBjb21wYXJlIGNsaWVudERhdGFKU09OIGFnYWluc3QgYSB0ZW1wbGF0ZS4gU2VlIGh0dHBzOi8vZ29vLmdsL3lhYlBleCJ9";
-  let client_data = Buffer.from(client_data_json, "base64");
-
-  // console.log("decoded client data");
-  // console.log(client_data);
+  "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVlFqQTRUbzQ2czFWcUZQM041ZU9xR0VsYkw4ZjZLNnM5RXhWM2gtVVRlOCIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6MzAwMCIsImNyb3NzT3JpZ2luIjpmYWxzZX0";
+  let client_data = Buffer.from(client_data_json, "base64url").toString();
 
   // challenge offset
-  let challenge_index = client_data.toString().indexOf("challenge") + 12
+  let challenge_index = client_data.indexOf("challenge") + 12;
+  let challenge_end = challenge.length + challenge_index;
 
+  console.log(client_data.toString()[challenge_index])
 
   /* AUTHENTICATOR DATA */
-  const auth_data = "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAA"
+  const auth_data = "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAA";
   let auth_data_decoded = Buffer.from(auth_data, "base64url");
 
-  // console.log("decoded auth data")
-  // console.log(auth_data_decoded)
   
-  let auth_data_bin = [] as string[]
-  for (var i = 0; i < auth_data_decoded.length; i ++) {
-    let bin_byte = byteString(auth_data_decoded[i]).split("")
+  console.log("decoded auth data len")
+  console.log(auth_data_decoded.length)
+  console.log(auth_data_decoded[32])
 
-    auth_data_bin = auth_data_bin.concat(bin_byte)
+  let auth_data_bin = [] as string[];
+  for (var i = 0; i < auth_data_decoded.length; i++) {
+    let bin_byte = byteString(auth_data_decoded[i]).split("");
 
+    auth_data_bin = auth_data_bin.concat(bin_byte);
   }
+  console.log("auth data bin len")
+  console.log(auth_data_bin.length)
+  console.log(auth_data_bin[32 * 8 + 7])
+
+  console.log(auth_data_bin[32 * 8 + 5])
 
   // console.log("binary auth data")
   // console.log(auth_data_bin)
 
-  return getCircuitInputs(sig, pubkey, challenge, challenge_index, client_data, auth_data_bin);
+  return getCircuitInputs(
+    sig,
+    pubkey,
+    challenge,
+    challenge_index,
+    challenge_end,
+    client_data,
+    auth_data_bin
+  );
 }
 
 async function do_generate() {
@@ -327,7 +346,7 @@ async function do_generate() {
   // console.log(gen_inputs.client_data_json.length)
   // console.log(gen_inputs.challenge_offset.length)
   // console.log(gen_inputs.challenge_offset)
-  // console.log(gen_inputs.authenticator_data.length)
+  console.log(gen_inputs.authenticator_data.length)
   return gen_inputs;
 }
 
@@ -337,7 +356,6 @@ if (typeof require !== "undefined" && require.main === module) {
   const circuitInputs = do_generate().then((res) => {
     console.log("Writing to file...");
     fs.writeFileSync(`./webauthn.json`, JSON.stringify(res), { flag: "w" });
-  }
-  );
+  });
   // gen_test();
 }

@@ -4,6 +4,7 @@ include "./sha.circom";
 // include "./QuinSelector.circom";
 include "./base64.circom";
 include "./ecdsa/ecdsa.circom";
+include "./subarray.circom";
 
 template WebAuthnVerify(n, k, max_challenge, max_client_json, max_auth_data) {
   signal input pubkey[2][k]; 
@@ -14,6 +15,7 @@ template WebAuthnVerify(n, k, max_challenge, max_client_json, max_auth_data) {
 
   signal input client_data_json[max_client_json]; 
   signal input challenge_offset; // where the challenge is in the json, C.challenge
+  signal input challenge_end;
   // https://w3c.github.io/webauthn/#sctn-authenticator-data
   signal input authenticator_data[max_auth_data]; // 37 bytes or more, just do an array of 37*8 bits, decoded
 
@@ -25,24 +27,69 @@ template WebAuthnVerify(n, k, max_challenge, max_client_json, max_auth_data) {
 
   // we are not actually doing any encoding here :))))) passing in non-encoded values
   // isolate where challenge domain is
-  component challenge_eq[max_client_json];
-  for (var i = 0; i < max_client_json; i++) {
-    challenge_eq[i] = IsEqual();
-    challenge_eq[i].in[0] <== i;
-    challenge_eq[i].in[1] <== challenge_offset;
+
+  // component challenge_eq[max_client_json];
+  // for (var i = 0; i < max_client_json; i++) {
+  //   // log(client_data_json[i]);
+  //   challenge_eq[i] = IsEqual();
+  //   challenge_eq[i].in[0] <== i;
+  //   challenge_eq[i].in[1] <== challenge_offset;
+  // }
+  // // shift C.challenge to beginning of json
+
+  // signal shifted_challenge[max_challenge][max_client_json];
+  // signal challenge_temp[max_challenge];
+
+  // component challenge_mod[max_challenge];
+
+  // for (var j = 0; j < max_challenge; j++) {
+  //   // PROBLEM: if max_client_json >= 2*max_challenge, then at index 2 * max_challenge you'll get an error
+  //   // shifted_challenge[0][0] = 0
+  //   // if (j % challenge_offset == 0) {
+  //   //   set the shifted chalenge to 0
+  //   // }
+  //   challenge_mod[j] = IsEqual();
+  //   challenge_mod[j].in[0] <== j;
+  //   challenge_mod[j].in[1] <== challenge_offset;
+
+  //   var is_zero = 1 - challenge_mod[j].out;
+  //   challenge_temp[j] <== is_zero * client_data_json[j];
+
+  //   shifted_challenge[j][j] <== challenge_eq[j].out * challenge_temp[j];
+  //   for (var i = j + 1; i < max_client_json; i++) {
+
+  //     // shifted_challenge[0][1] = shifted_challenge[0][0] + challenge_eq[1] * client_data_json[1] = 0
+  //     // if j = 0, at i = 35, challenge_eq is 1, so shifted_challenge[0][35] * client_data_json[35] = value of client_data_json[35]
+  //     // at shifted_challenge[0][max - 1], it'll equal the value at client_data_json[35]
+
+  //     // shifted_challenge[35][1] = shifted_challenge[35][0] + challenge_eq[1] * client_data_json[36] = 0
+  //     // shifted_challenge[35][35] = shifted_challenge[35][34] + challenge_eq[35] * client_data_json[35 + 35] // so shifted_challenge[35][34] is not 0
+
+  //     shifted_challenge[j][i] <== shifted_challenge[j][i - 1] + (challenge_eq[i-j].out * client_data_json[i]);
+  //   }
+  // }
+
+  var b = log_ceil(max_client_json + 1);
+
+  component shifted_client_json = VarSubarray(max_client_json, b);
+
+  for (var i = 0; i < max_client_json; i ++) {
+    shifted_client_json.in[i] <== client_data_json[i];
   }
-  // shift C.challenge to beginning of json
-  signal shifted_challenge[max_challenge][max_client_json];
-  for (var i = 0; i < max_challenge; i++) {
-    shifted_challenge[i][i] <== challenge_eq[i].out * client_data_json[i];
-    for (var j = i + 1; j < max_client_json; j++) {
-        shifted_challenge[i][j] <== shifted_challenge[i][j - 1] + client_data_json[j] * challenge_eq[j-i].out;
-    }
-  }
+  shifted_client_json.start <== challenge_offset;
+  shifted_client_json.end <== challenge_end;
 
   // constrain the challenge with shifted_challenge
+  // for (var i = 0; i < max_challenge; i++) {
+  //   log(challenge[i]);
+  //   log(shifted_challenge[i][max_client_json - 1]);
+  //   challenge[i] === shifted_challenge[i][max_client_json - 1];
+  // }
+
   for (var i = 0; i < max_challenge; i++) {
-    challenge[i] === shifted_challenge[i][max_client_json - 1];
+    log(challenge[i]);
+    log(shifted_client_json.out[i]);
+    challenge[i] === shifted_client_json.out[i];
   }
 
   // 13. Verify that the value of C.origin matches the Relying Party's origin.
@@ -59,8 +106,8 @@ template WebAuthnVerify(n, k, max_challenge, max_client_json, max_auth_data) {
   // auth_bits.out[0] === 1;
   // auth_bits.out[2] === 1;
 
-  authenticator_data[32 * 8] === 1;
-  authenticator_data[32 * 8 + 2] === 1;
+  authenticator_data[32 * 8 + 7] === 1;
+  authenticator_data[32 * 8 + 5] === 1;
 
   // skip 18 since it is optional
 
