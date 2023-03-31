@@ -131,4 +131,4 @@ template WebAuthnVerify(n, k, max_challenge, max_client_json, max_auth_data) {
 
 }
 
-component main = WebAuthnVerify(64, 4, 40, 512, 512);
+component main = WebAuthnVerify(64, 4, 100, 512, 512);

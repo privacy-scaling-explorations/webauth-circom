@@ -96,6 +96,19 @@ async function Uint8ArrayToCharArray(a: Uint8Array): Promise<string[]> {
   return Array.from(a).map((x) => x.toString());
 }
 
+// k registers of n bits (4 registers of 64 bits)
+function CharArrayToRegisters(a_inter: string[]) : string[] {
+  let a = [] as string[];
+  for (var i = 0; i < a_inter.length; i += 8) {
+    let temp: string = "";
+    for (var j = i; j < i + 8; j++) {
+      temp += a_inter[j];
+    }
+    a = a.concat(temp);
+  }
+  return a;
+}
+
 const MAX_CHALLENGE = 100
 const MAX_CLIENT_JSON = 512
 const MAX_AUTH_DATA = 512
@@ -108,11 +121,9 @@ async function getCircuitInputs(
   clientDataJson: Uint8Array,
   authenticatorData: string[]
   ) {
-    console.log("Starting processing of inputs");
-    console.log(authenticatorData.toString())
-    const hi = new TextEncoder().encode(authenticatorData.toString())
-    console.log("hi")
-    console.log(hi.length)
+    // console.log("Starting processing of inputs");
+    // console.log(authenticatorData.toString())
+    // const hi = new TextEncoder().encode(authenticatorData.toString())
 
     // PAD client_data_json
     const [clientDataPadded, clientDataPaddedLen] = await sha256Pad(
@@ -139,15 +150,21 @@ async function getCircuitInputs(
     const authenticator_data = await Uint8ArrayToCharArray(authDataPadded); 
     const client_data_json = await Uint8ArrayToCharArray(clientDataPadded); 
     
-    const r = await Uint8ArrayToCharArray(sig.r);
-    const s = await Uint8ArrayToCharArray(sig.s);
+    const r_inter = await Uint8ArrayToCharArray(sig.r);
+    const r = CharArrayToRegisters(r_inter);
+    
+    const s_inter = await Uint8ArrayToCharArray(sig.s);
+    const s = CharArrayToRegisters(s_inter);
 
     const xCircom = await Uint8ArrayToCharArray(publicKey.x);
     const yCircom = await Uint8ArrayToCharArray(publicKey.y);
 
+    const x = CharArrayToRegisters(xCircom);
+    const y = CharArrayToRegisters(yCircom);
+
     const pubkey = new Array(2)
-    pubkey[0] = xCircom
-    pubkey[1] = yCircom
+    pubkey[0] = x
+    pubkey[1] = y
 
     const challenge_offset = challengeOffset.toString();
 
@@ -179,8 +196,8 @@ function decodeFirst<Type>(input : Uint8Array) : Type{
 
   const [first] = decoded;
 
-  console.log("printing CBOR decoded object");
-  console.log(first);
+  // console.log("printing CBOR decoded object");
+  // console.log(first);
   return first;
 }
 
@@ -247,8 +264,8 @@ export async function generate_inputs() {
   const decodedPubkey = decodeCredentialPublicKey(pubkeyArray);
   const pubkey = extractXY(decodedPubkey)
 
-  console.log("extracted x y")
-  console.log(pubkey)
+  // console.log("extracted x y")
+  // console.log(pubkey)
   
   /* SIGNATURE */
   const signature =
@@ -256,8 +273,8 @@ export async function generate_inputs() {
   let sig_buffer = Buffer.from(signature, "base64");
   let sig = unwrapEC2Signature(sig_buffer);
 
-  console.log("unwrapped sig")
-  console.log(sig)
+  // console.log("unwrapped sig")
+  // console.log(sig)
 
   // TODO: split signature
 
@@ -271,8 +288,8 @@ export async function generate_inputs() {
     "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiR0cyRGdLNkFPelJJOUJZdGNVUGdkaTFZRFVlVlVVQnEtVW1GeFpCbU9YSSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6MzAwMCIsImNyb3NzT3JpZ2luIjpmYWxzZSwib3RoZXJfa2V5c19jYW5fYmVfYWRkZWRfaGVyZSI6ImRvIG5vdCBjb21wYXJlIGNsaWVudERhdGFKU09OIGFnYWluc3QgYSB0ZW1wbGF0ZS4gU2VlIGh0dHBzOi8vZ29vLmdsL3lhYlBleCJ9";
   let client_data = Buffer.from(client_data_json, "base64");
 
-  console.log("decoded client data");
-  console.log(client_data);
+  // console.log("decoded client data");
+  // console.log(client_data);
 
   // challenge offset
   let challenge_index = client_data.toString().indexOf("challenge") + 12
@@ -282,8 +299,8 @@ export async function generate_inputs() {
   const auth_data = "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAA"
   let auth_data_decoded = Buffer.from(auth_data, "base64url");
 
-  console.log("decoded auth data")
-  console.log(auth_data_decoded)
+  // console.log("decoded auth data")
+  // console.log(auth_data_decoded)
   
   let auth_data_bin = [] as string[]
   for (var i = 0; i < auth_data_decoded.length; i ++) {
@@ -293,14 +310,24 @@ export async function generate_inputs() {
 
   }
 
-  console.log("binary auth data")
-  console.log(auth_data_bin)
+  // console.log("binary auth data")
+  // console.log(auth_data_bin)
 
   return getCircuitInputs(sig, pubkey, challenge, challenge_index, client_data, auth_data_bin);
 }
 
 async function do_generate() {
   const gen_inputs = await generate_inputs();
+  // console.log("sizes")
+
+  // console.log(gen_inputs.pubkey.length) // 2, 4 registers of 64 bits
+  // console.log(gen_inputs.r.length) // 4 registers of 64 bits each
+  // console.log(gen_inputs.s.length) // 4 registers of 64 bits each
+  // console.log(gen_inputs.challenge.length)
+  // console.log(gen_inputs.client_data_json.length)
+  // console.log(gen_inputs.challenge_offset.length)
+  // console.log(gen_inputs.challenge_offset)
+  // console.log(gen_inputs.authenticator_data.length)
   return gen_inputs;
 }
 
