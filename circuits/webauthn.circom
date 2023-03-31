@@ -117,14 +117,13 @@ template WebAuthnVerify(n, k, max_challenge, max_client_json, max_auth_data) {
     hashed_client_data.in_padded[i] <== client_data_json[i];
   }
 
-  // TODO: check if this is right
   hashed_client_data.in_len_padded_bytes <== max_client_json;
 
   // TODO: we are using auth data as bits here
   // auth data as bits + 256 bits of sha
-  var concat_len = max_auth_data + 256; 
+  var concat_len = 37*8 + 256; 
 
-  signal concatenated_json_auth[concat_len]; 
+  signal concatenated_json_auth[512 + 256]; 
   signal temp[concat_len];
   component concat_eq[concat_len];
   // binary concatenation of authdata and hash
@@ -139,14 +138,19 @@ template WebAuthnVerify(n, k, max_challenge, max_client_json, max_auth_data) {
     concatenated_json_auth[i] <== (hashed_client_data.out[i % 256] * (passed_auth)) + temp[i];
   }
 
+  // pad your concatenated json
+  for (var i = concat_len; i < 512 + 256; i ++) {
+    concatenated_json_auth[i] <== 0;
+  }
+
   // 20. ECDSA verify
   // hash concatenation before ecdsa
-  component hashed_sig_msg = Sha256Bytes(concat_len);
-  for (var i = 0; i < concat_len; i++) {
+  component hashed_sig_msg = Sha256Bytes(512 + 256);
+  for (var i = 0; i < 512 + 256; i++) {
     hashed_sig_msg.in_padded[i] <== concatenated_json_auth[i];
   }
   // TODO: check if this is right
-  hashed_sig_msg.in_len_padded_bytes <== concat_len;
+  hashed_sig_msg.in_len_padded_bytes <== 512 + 256;
 
   var msg_len = (256+n)\n;
   component base_msg[msg_len];
