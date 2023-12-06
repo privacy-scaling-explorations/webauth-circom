@@ -14,6 +14,7 @@ By providing configuration containing your Phase 1 Powers of Tau and circuits, t
 See the source projects for full documentation and configuration
 
 ## Install
+- Run `git pull --recurse-submodules`
 - Run `git submodule update --init --recursive` to grab the ECDSA dependencies
 `yarn` to install dependencies
 
