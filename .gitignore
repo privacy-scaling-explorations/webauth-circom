@@ -14,3 +14,5 @@ circuits/*.zkey
 contracts/*.sol
 
 build/
+
+INTERNAL.md
