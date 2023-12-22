@@ -16,3 +16,5 @@ contracts/*.sol
 build/
 
 INTERNAL.md
+
+*.r1cs
