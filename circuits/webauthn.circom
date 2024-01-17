@@ -118,17 +118,27 @@ template WebAuthnVerify(n, k, max_auth_data_bytes) {
   for (var j = 0; j < hash_leftover_bits; j++) numify[k-1].in[j] <== message_hasher.out[n*(k-1)+j];
   message_hash[k-1] <== numify[k-1].out;
 
-  // Need to take message hash mod P\
+  // Need to take message hash mod P, since it is an element of the base field
   var ret[100] = get_p256_prime(n, k);
   var p[k];
   for (var i = 0; i < k; i++) p[i] = ret[i];
+
+  var padded_message_hash[2*k];
+  for (var i = 0; i < k; i++) padded_message_hash[i] = message_hash[i];
+  for (var i = k; i < k*2; i++) padded_message_hash[i] = 0;
+
+  component message_hash_modder = BigMod(n, k);
+  message_hash_modder.a <== padded_message_hash;
+  message_hash_modder.b <== p;
+
+  signal message_hash_mod_p[k] <== message_hash_modder.mod;
 
   // TODO: Check if this works without reducing message hash mod P
 
   component ecdsa = ECDSAVerifyNoPubkeyCheck(n, k);
   ecdsa.r <== r;
   ecdsa.s <== s;
-  ecdsa.msghash <== message_hash;
+  ecdsa.msghash <== message_hash_mod_p;
   ecdsa.pubkey <== pubkey;
 
   ecdsa.result === 1;
