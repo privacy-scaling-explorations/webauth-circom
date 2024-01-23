@@ -8,13 +8,14 @@ include "../node_modules/circomlib/circuits/comparators.circom";
 include "./utils.circom";
 
 template Sha256Input(nBits) {
-  //assert(nBits % 64 == 0);
+  assert(nBits % 64 == 0);
   var nBlocks = ((nBits + 64)\512)+1;
   signal input in[nBlocks*512];
   signal input in_num_bits;
   signal output paddedIn[nBlocks*512];
 
   var nBlocks_in = ((in_num_bits + 64)\512)+1;
+  //assert(in_num_bits < nBits);    // We need room for the 1 bit at the end of input
 
   component length_bits = Num2Bits(64);
   length_bits.in <== in_num_bits;
@@ -68,7 +69,7 @@ template Sha256Input(nBits) {
 
       muxers[k*64+i-448] = Mux2();
       muxers[k*64+i-448].c[0] <== 0;
-      muxers[k*64+i-448].c[1] <== in[k*512];
+      muxers[k*64+i-448].c[1] <== in[k*512+i];
       muxers[k*64+i-448].c[2] <== length_bits.out[63-(i-448)];
       muxers[k*64+i-448].c[3] <== 1;
 
@@ -81,7 +82,7 @@ template Sha256Input(nBits) {
 }
 
 template Sha256Flexible(nBits) {
-  //assert(nBits % 512 == 0);
+  assert(nBits % 512 == 0);
   var nBlocks = ((nBits + 64)\512)+1;
   signal input in[nBits];
   signal input in_num_bits;
@@ -97,6 +98,39 @@ template Sha256Flexible(nBits) {
   padding.in_num_bits <== in_num_bits;
   padding.in <== paddingInput;
 
+  signal bits[nBlocks*512] <== padding.paddedIn;
+
+  component hasher = Sha256Function(nBlocks);
+  hasher.in <== bits;
+  hasher.endBlock <-- nBlocks_in-1;// FIXME THIS IS UNCONSTRAINED
+  out <== hasher.out;
+}
+
+template Sha256FlexibleBytes(nBytes) {
+  var nBlocks = ((nBytes + 8)\64)+1;
+  signal input in[nBytes];
+  signal input in_num_bytes;
+  signal output out[256];
+
+  var nBlocks_in = ((in_num_bytes + 8)\64)+1;
+  
+  signal paddedBytes[nBlocks*64];
+  for (var i = 0; i < nBytes; i++) paddedBytes[i] <== in[i];
+  for (var i = 0; i < 64; i++) paddedBytes[i+nBytes] <== 0;
+  
+  signal paddedBits[nBlocks*512];
+  component bitify[nBytes+64];
+  for (var i = 0; i < nBytes+64; i++) {
+    bitify[i] = Num2Bits(8);
+    bitify[i].in <== paddedBytes[i];
+    for (var j = 0; j < 8; j++) {
+      paddedBits[i*8 + j] <== bitify[i].out[7-j];
+    }
+  }
+
+  component padding = Sha256Input(nBytes*8);
+  padding.in_num_bits <== in_num_bytes*8;
+  padding.in <== paddedBits;
   signal bits[nBlocks*512] <== padding.paddedIn;
 
   component hasher = Sha256Function(nBlocks);
