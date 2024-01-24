@@ -32,3 +32,31 @@ export function BigIntArrayToBuffer(arr: bigint[]): Buffer {
 
   return res;
 }
+
+export function bigint_to_registers(x: bigint, n: number, k: number): bigint[] {
+  let mod: bigint = 1n;
+  for (var idx = 0; idx < n; idx++) {
+    mod = mod * 2n;
+  }
+
+  let ret: bigint[] = [];
+  var x_temp: bigint = x;
+  for (var idx = 0; idx < k; idx++) {
+    ret.push(x_temp % mod);
+    x_temp = x_temp / mod;
+  }
+  return ret;
+}
+
+export function bigint_to_registers_string(x: bigint, n: number, k: number): string[] {
+  let registers = bigint_to_registers(x,n,k);
+  let res: string[] = [];
+  for (var r of registers) {
+    res.push(r.toString());
+  }
+  return res;
+}
+
+export function uint8ArrayToBigInt(x: Uint8Array): bigint {
+  return BigInt('0x'+Buffer.from(x).toString('hex'));
+}

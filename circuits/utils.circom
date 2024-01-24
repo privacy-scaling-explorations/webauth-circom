@@ -16,6 +16,25 @@ template Sum(n) {
   out <== sum[n-1];
 }
 
+// Convert a signal to a byte array. n is the number of bits of the signal
+template to_byte_array(n) {
+  assert(n % 8 == 0);
+  signal input in;
+  signal output result[n/8];
+
+  component numify = Num2Bits(n);
+  numify.in <== in;
+
+  component nummers[n/8];
+  for (var i = 0; i < n/8; i++) {
+    nummers[i] = Bits2Num(8);
+    for (var j = 0; j < 8; j++) {
+      nummers[i].in[j] <== numify.out[i*8+j];
+    }
+    result[i] <== nummers[i].out;
+  }
+}
+
 // Concatanate two arrays: The first array which is in size of [min_first,max_first] and a second array with static size
 template concatenate_arrays(min_first, max_first, size_second) {
   signal input first[max_first];      // Input as bits
