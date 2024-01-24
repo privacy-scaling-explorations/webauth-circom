@@ -11,7 +11,7 @@ include "./utils.circom";
 // Challenge is the hash of the transaction data
 // NOTE: Challenge must be exactly 252 bits
 
-template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes) {
+template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_challenge_bytes) {
   /// Private Inputs
   signal input r[k];
   signal input s[k];
@@ -22,7 +22,7 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes) {
 
   /// Public Inputs
   signal input pubkey[2][k];
-  //signal input challenge;   // Challenge is 252 bits as we chop off 4 bits of the hash of the tx data
+  signal input challenge;   // Challenge is 252 bits as we chop off 4 bits of the hash of the tx data
   //signal input origin;      // Should be padded to 212 bits
   // signal input signCount;   // C.signCount (if we use this, should probably be public?)
   // signal input rpId;
@@ -63,12 +63,14 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes) {
     client_data[i] - part1_bytes[i] === 0;
   }
 
-  // Convert the challenge and origin to bits
-  // component challenge_bytes = to_byte_array(252);
-  // challenge_bytes.in <== challenge;
+  // Convert the challenge to bytes
+  component challenge_bytes = Num2Bytes(size_challenge_bytes);
+  challenge_bytes.in <== challenge;
 
   // Verify the challenge is in the client data
-
+  for (var i = 0; i < size_challenge_bytes; i++) {
+    challenge_bytes.out[i] - client_data[36+i] === 0;
+  }
   
   // var part1_bits[288] = get_json_part_1();
   // var part2_bits[96] = get_json_part_2();

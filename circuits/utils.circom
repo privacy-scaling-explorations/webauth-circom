@@ -16,20 +16,19 @@ template Sum(n) {
   out <== sum[n-1];
 }
 
-// Convert a signal to a byte array. n is the number of bits of the signal
-template to_byte_array(n) {
-  assert(n % 8 == 0);
+// Convert a signal to a byte array. n is the number of bytes of the signal
+template Num2Bytes(n) {
   signal input in;
-  signal output out[n/8];
+  signal output out[n];
 
-  component numify = Num2Bits(n);
+  component numify = Num2Bits(n*8);
   numify.in <== in;
 
-  component nummers[n/8];
-  for (var i = 0; i < n/8; i++) {
+  component nummers[n];
+  for (var i = 0; i < n; i++) {
     nummers[i] = Bits2Num(8);
     for (var j = 0; j < 8; j++) {
-      nummers[i].in[j] <== numify.out[i*8+j];
+      nummers[i].in[j] <== numify.out[(n*8-1)-i*8-(7-j)];
     }
     out[i] <== nummers[i].out;
   }
