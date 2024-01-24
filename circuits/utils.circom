@@ -20,7 +20,7 @@ template Sum(n) {
 template to_byte_array(n) {
   assert(n % 8 == 0);
   signal input in;
-  signal output result[n/8];
+  signal output out[n/8];
 
   component numify = Num2Bits(n);
   numify.in <== in;
@@ -31,7 +31,7 @@ template to_byte_array(n) {
     for (var j = 0; j < 8; j++) {
       nummers[i].in[j] <== numify.out[i*8+j];
     }
-    result[i] <== nummers[i].out;
+    out[i] <== nummers[i].out;
   }
 }
 
