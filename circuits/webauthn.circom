@@ -24,15 +24,9 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_c
   signal input pubkey[2][k];
   signal input challenge;   // Challenge is 252 bits as we chop off 4 bits of the hash of the tx data
   //signal input origin;      // Should be padded to 212 bits
-  // signal input signCount;   // C.signCount (if we use this, should probably be public?)
-  // signal input rpId;
+  //signal input signCount;   // C.signCount (if we use this, should probably be public?)
+  //signal input rpId;
   //signal input rpIdHash[2];  // TODO: I think rpId and rpIdHash can be constants
-
-  // 11. Verify that the value of C.type is the string webauthn.get
-  // WE DO NOT NEED TO DO THIS, as this effects the generated hash that is signed
-
-  // 12. Verify that the value of C.challenge equals the base64url encoding of options.challenge.
-  // - NOT NEEDED as the tx data is the challenge
 
   // 13. Verify that the value of C.origin matches the Relying Party's origin.
   // - NOT NEEDED
@@ -53,16 +47,12 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_c
 
   // 18. [Paraphrased] Extensions for processing that are irrelevant to us
 
-  // 19. Let hash be the result of computing a hash over the cData using SHA-256.
-  // Serialization: https://w3c.github.io/webauthn/#clientdatajson-serialization
-  // Python: binascii.hexlify(b'{"type":')
-
-  // Verify type is "webauthn.get" and that the challenge key comes after
+  // 11. Verify that the value of C.type is the string webauthn.get
   var part1_bytes[36] = get_json_part_1();
   for (var i = 0; i < 36; i++) {
     client_data[i] - part1_bytes[i] === 0;
   }
-
+  // 12. Verify that the value of C.challenge equals the base64url encoding of options.challenge.
   // Convert the challenge to bytes
   component challenge_bytes = Num2Bytes(size_challenge_bytes);
   challenge_bytes.in <== challenge;
@@ -71,16 +61,9 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_c
   for (var i = 0; i < size_challenge_bytes; i++) {
     challenge_bytes.out[i] - client_data[36+i] === 0;
   }
-  
-  // var part1_bits[288] = get_json_part_1();
-  // var part2_bits[96] = get_json_part_2();
-  // var part3_bits[176] = get_json_part_3();
-  // for (var i = 0; i < 288; i++) client_data_hasher.in[i] <== part1_bits[i];
-  // for (var i = 0; i < 252; i++) client_data_hasher.in[288+i] <== challenge_bits.out[i];
-  // for (var i = 0; i < 96; i++) client_data_hasher.in[540+i] <== part2_bits[i];
-  // for (var i = 0; i < 212; i++) client_data_hasher.in[636+i] <== origin_bits.out[i];
-  // for (var i = 0; i < 176; i++) client_data_hasher.in[848+i] <== part3_bits[i];
 
+  // 19. Let hash be the result of computing a hash over the cData using SHA-256.
+  // Serialization: https://w3c.github.io/webauthn/#clientdatajson-serialization
   component client_data_hasher = Sha256FlexibleBytes(max_client_data_bytes);
   client_data_hasher.in <== client_data;
   client_data_hasher.in_num_bytes <== client_data_num_bytes;
@@ -127,7 +110,7 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_c
   }
 
   // The last register may consume less than n bits of the hash
-  // NOTE: With this metholody, we cannot use curves that are not similar size to the hash output
+  // NOTE: With this methodology, we cannot use curves that are not similar size to the hash output
   var hash_leftover_bits = 256-(n*(k-1));
   numify[k-1] = Bits2Num(hash_leftover_bits);
   for (var j = 0; j < hash_leftover_bits; j++) numify[k-1].in[j] <== message_hasher.out[255-(n*(k-1)+j)];
@@ -147,8 +130,6 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_c
   message_hash_modder.b <== p;
 
   signal message_hash_mod_p[k] <== message_hash_modder.mod;
-
-  // TODO: Check if this works without reducing message hash mod P
 
   component ecdsa = ECDSAVerifyNoPubkeyCheck(n, k);
   ecdsa.r <== r;
