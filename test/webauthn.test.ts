@@ -1,4 +1,5 @@
 import path = require('path');
+import * as fs from 'fs';
 
 import { expect, assert } from 'chai';
 import { p256 } from '@noble/curves/p256';
@@ -92,6 +93,8 @@ describe('Webauthn circuit', async () => {
       pubkey: [bigint_to_registers(x, 43, 6), bigint_to_registers(y, 43, 6)],
       challenge: BigInt('0x'+challenge.toString('hex'))
     }
+
+    fs.writeFileSync(`./webauthn.json`, JSON.stringify(input), { flag: "w" });
 
     await webauthn_circuit.calculateWitness(input);
     
