@@ -13,6 +13,7 @@ circuits/*.wasm
 circuits/*.zkey
 
 build/
+types/
 
 INTERNAL.md
 

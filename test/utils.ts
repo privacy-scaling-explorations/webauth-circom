@@ -1,3 +1,5 @@
+import { p256 } from "@noble/curves/p256";
+
 export function bufferToBitArray(b: Buffer) {
   const res = [];
   for (let i=0; i<b.length; i++) {
@@ -59,4 +61,42 @@ export function bigint_to_registers_string(x: bigint, n: number, k: number): str
 
 export function uint8ArrayToBigInt(x: Uint8Array): bigint {
   return BigInt('0x'+Buffer.from(x).toString('hex'));
+}
+
+export type WebauthnCircuitInput = {
+  r: bigint[]
+  s: bigint[]
+  auth_data: bigint[],
+  auth_data_num_bytes: bigint,
+  client_data: bigint[],
+  client_data_num_bytes: bigint,
+
+  pubkey: bigint[][],
+  challenge: bigint,
+  // origin: bigint,
+  // signCount: bigint,
+  // rpId: bigint
+}
+
+export function generateCircuitInputs(
+  pubkey: bigint[],
+  sig: Buffer,
+  authenticatorData: Buffer,
+  clientDataJSON: Buffer,
+  challenge: Buffer,
+  authDaataSize: number,
+  clientDataSize: number,
+): WebauthnCircuitInput {
+  let sig_decoded = p256.Signature.fromDER(sig.toString('hex'));
+  return {
+    r: bigint_to_registers(sig_decoded.r, 43, 6),
+    s: bigint_to_registers(sig_decoded.s, 43, 6),
+    auth_data: bufferToBigIntArray(Buffer.concat([authenticatorData], authDaataSize)),
+    auth_data_num_bytes: BigInt(authenticatorData.length),
+    client_data: bufferToBigIntArray(Buffer.concat([clientDataJSON], clientDataSize)),
+    client_data_num_bytes: BigInt(clientDataJSON.length),
+
+    pubkey: [bigint_to_registers(pubkey[0], 43, 6), bigint_to_registers(pubkey[1], 43, 6)],
+    challenge: BigInt('0x'+challenge.toString('hex'))
+  }
 }

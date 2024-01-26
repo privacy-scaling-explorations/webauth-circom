@@ -4,37 +4,9 @@ import * as fs from 'fs';
 import { expect, assert } from 'chai';
 import { p256 } from '@noble/curves/p256';
 import { sha256 } from '@noble/hashes/sha256';
-import { bigint_to_registers, uint8ArrayToBigInt } from './utils';
+import { WebauthnCircuitInput, bigint_to_registers, bufferToBigIntArray, generateCircuitInputs, uint8ArrayToBigInt } from './utils';
 const circom_tester = require('circom_tester');
 const wasm_tester = circom_tester.wasm;
-
-function bufferTobitArray(b: Buffer) {
-  const res = [];
-  for (let i=0; i<b.length; i++) {
-      for (let j=0; j<8; j++) {
-          res.push((b[i] >> (7-j) &1));
-      }
-  }
-  return res;
-}
-
-function bitArrayTobuffer(a: number[] | bigint[]) {
-  const len = Math.floor((a.length -1 )/8)+1;
-  const b = Buffer.alloc(len);
-
-  for (let i=0; i<a.length; i++) {
-      const p = Math.floor(i/8);
-      b[p] = b[p] | (Number(a[i]) << ( 7 - (i%8)  ));
-  }
-  return b;
-}
-
-function bufferToBigIntArray(arr: Buffer): bigint[] {
-  let res: bigint[] = [];
-  arr.forEach((x) => res.push(BigInt(x)));
-
-  return res;
-}
 
 describe('Webauthn circuit', async () => {
   // TODO FIXME: The clientData in this example data does NOT properly follow the serialization detailed in 5.8.1.1
@@ -65,53 +37,33 @@ describe('Webauthn circuit', async () => {
 
   let webauthn_circuit: any;
   before(async () => {
-    webauthn_circuit = await wasm_tester(path.join(__dirname, 'circuits', 'test_webauthn64.circom'));
+    webauthn_circuit = await wasm_tester(path.join(__dirname, 'circuits', 'test_webauthn64_27.circom'));
   })
 
   /// Test the normal P-256 verification over the test data
   it('Test webauthn vanilla verification', async () => {
     let hash = sha256(clientDataJSON);
     let msg_hash = Buffer.from(sha256(Buffer.concat([authenticatorData, hash])));
-    //console.log((Buffer.concat([authenticatorData, hash])).toString('hex'));
     //console.log(msg_hash.toString('hex'));
-    //console.log(clientDataJSON.length);
   
     let res = p256.verify(sig.toString('hex'), msg_hash.toString('hex'), pubkey.toHex());
     assert(res == true);
   })
 
   it('Circuit verification', async () => {
-    let sig_decoded = p256.Signature.fromDER(sig.toString('hex'));
-    let input: WebauthnCircuitInput = {
-      r: bigint_to_registers(sig_decoded.r, 43, 6),
-      s: bigint_to_registers(sig_decoded.s, 43, 6),
-      auth_data: bufferToBigIntArray(Buffer.concat([authenticatorData], 64)),
-      auth_data_num_bytes: BigInt(authenticatorData.length),
-      client_data: bufferToBigIntArray(Buffer.concat([clientDataJSON], 256)),
-      client_data_num_bytes: BigInt(clientDataJSON.length),
+    let input = generateCircuitInputs(
+      [x,y],
+      sig,
+      authenticatorData,
+      clientDataJSON,
+      challenge,
+      64,
+      256
+    );
 
-      pubkey: [bigint_to_registers(x, 43, 6), bigint_to_registers(y, 43, 6)],
-      challenge: BigInt('0x'+challenge.toString('hex'))
-    }
-
-    fs.writeFileSync(`./webauthn.json`, JSON.stringify(input), { flag: "w" });
+    //fs.writeFileSync(`./webauthn.json`, JSON.stringify(input), { flag: "w" });
 
     await webauthn_circuit.calculateWitness(input);
     
   });
 })
-
-type WebauthnCircuitInput = {
-  r: bigint[]
-  s: bigint[]
-  auth_data: bigint[],
-  auth_data_num_bytes: bigint,
-  client_data: bigint[],
-  client_data_num_bytes: bigint,
-
-  pubkey: bigint[][],
-  challenge: bigint,
-  // origin: bigint,
-  // signCount: bigint,
-  // rpId: bigint
-}
