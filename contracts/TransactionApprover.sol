@@ -5,7 +5,7 @@ import "./webauthn_verifier.sol";
 contract TransactionApprover is Groth16Verifier {
   struct Account {
     uint256[2] pubkey;
-    uint256 signCount;
+    uint256 nonce;
   }
 
   // Map of x-coordinate to the account
@@ -47,23 +47,23 @@ contract TransactionApprover is Groth16Verifier {
     uint256 signer,
     address to,
     bytes calldata data,
-    uint256 signCount,
+    uint256 nonce,
     ProofArgs calldata args
   ) external {
-    bytes memory signer_bytes = new bytes(32);
+    //bytes memory signer_bytes = new bytes(32);
     bytes memory to_bytes = new bytes(32);
-    bytes memory signCount_bytes = new bytes(32);
+    bytes memory nonce_bytes = new bytes(32);
     assembly {
-      mstore(add(signer_bytes, 32), signer)
+      //mstore(add(signer_bytes, 32), signer)
       mstore(add(to_bytes, 32), to)
-      mstore(add(signCount_bytes, 32), signCount)
+      mstore(add(nonce_bytes, 32), nonce)
     }
-    bytes memory preimage = bytes.concat(signer_bytes, to_bytes, signCount_bytes, data);
+    bytes memory preimage = bytes.concat(to_bytes, data, nonce_bytes);
 
     bytes32 hash = sha256(preimage);
 
-    // The challenge is the lowest 252 bits
-    uint256 challenge = uint256(hash) & 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    // The challenge is the lowest 248 bits
+    uint256 challenge = uint256(hash) & 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     require(challenge == args.pubSignals[12], "Challenges dont match");
 
     uint256[2] memory pubkey = accounts[signer].pubkey;
