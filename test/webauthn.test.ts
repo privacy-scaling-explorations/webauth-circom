@@ -36,7 +36,7 @@ describe('Webauthn circuit', async () => {
 
   let webauthn_circuit: any;
   before(async () => {
-    webauthn_circuit = await wasm_tester(path.join(__dirname, 'circuits', 'test_webauthn64_27.circom'));
+    webauthn_circuit = await wasm_tester(path.join(__dirname, 'circuits', 'test_webauthn64_20.circom'));
   })
 
   /// Test the normal P-256 verification over the test data

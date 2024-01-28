@@ -68,10 +68,10 @@ template Base64Encode(N) {
 
         var second[6];
         for (var j = 0; j < 2; j++) second[5-j] = bits[N-1].out[1-j];
-        second[2] = 0;
         second[3] = 0;
-        second[4] = 0;
-        second[5] = 0;
+        second[2] = 0;
+        second[1] = 0;
+        second[0] = 0;
 
         b64_character[M-1] = Bits2Num(6);
         b64_character[M-1].in <== second;
@@ -96,6 +96,8 @@ template Base64Encode(N) {
         third[1] = 0;
         b64_character[M-1] = Bits2Num(6);
         b64_character[M-1].in <== third;
+        log("hmm");
+        log(b64_character[M-1].out);
 
         out[M-3] <== encodeCharacter()(b64_character[M-3].out);
         out[M-2] <== encodeCharacter()(b64_character[M-2].out);
