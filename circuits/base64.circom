@@ -133,11 +133,5 @@ template encodeCharacter() {
     signal number <== (lt_9.out - lt_z.out) * (in-4); //in-52+48
     signal special <== (eq_plus.out * 45) + (eq_underscore.out * 95);
 
-    log("===");
-    log(in);
-    log(uppercase);
-    log(lowercase);
-    log(number);
-    log(special);
     out <== uppercase + lowercase + number + special;
 }
