@@ -1,12 +1,13 @@
-pragma circom 2.1.5;
+pragma circom 2.1.6;
 
 include "../node_modules/circomlib/circuits/sha256/sha256.circom";
-include "../node_modules/circomlib/circuits/mux1.circom";
+//include "../node_modules/circomlib/circuits/mux1.circom";
 
 include "./sha256flex.circom";
 include "./ecdsa/ecdsa.circom";
 include "./webauthn_json_hardcodes.circom";
 include "./utils.circom";
+include "./base64.circom";
 
 // Challenge is the hash of the transaction data
 // NOTE: Challenge must be exactly 252 bits
@@ -57,10 +58,14 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_c
   component challenge_bytes = Num2Bytes(size_challenge_bytes);
   challenge_bytes.in <== challenge;
 
-  // Verify the challenge is in the client data
-  for (var i = 0; i < size_challenge_bytes; i++) {
-    challenge_bytes.out[i] - client_data[36+i] === 0;
+  // Verify the challenge is in the client data (which signs the base64 encoding)
+  component challenge_encoder = Base64Encode(size_challenge_bytes);
+  challenge_encoder.in <== challenge_bytes.out;
+
+  for (var i = 0; i < output_size(size_challenge_bytes); i++) {
+    challenge_encoder.out[i] - client_data[36+i] === 0;
   }
+
 
   // 19. Let hash be the result of computing a hash over the cData using SHA-256.
   // Serialization: https://w3c.github.io/webauthn/#clientdatajson-serialization

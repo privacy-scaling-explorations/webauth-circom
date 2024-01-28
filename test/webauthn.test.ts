@@ -32,8 +32,7 @@ describe('Webauthn circuit', async () => {
   let authenticatorData = Buffer.from(authenticatorData_str,"base64url");
   
   // The challenge is compared in the circuit as its Base64URL representation.
-  //let challenge = Buffer.from(Buffer.from(challenge_str).toString('base64url'));
-  let challenge = Buffer.from(challenge_str);
+  let challenge = Buffer.from(challenge_str, 'base64url');
 
   let webauthn_circuit: any;
   before(async () => {
