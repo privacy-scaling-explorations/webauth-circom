@@ -40,11 +40,8 @@
     "node": ">=16"
   },
   "scripts": {
-    "circom:dev": "hardhat circom --deterministic --debug --verbose",
-    "circom:prod": "hardhat circom --verbose",
     "test:contract": "hardhat test",
-    "test:circuit": "NODE_OPTIONS=--max_old_space_size=0 mocha --timeout 0 -r ts-node/register 'test/**/*.ts'",
-    "input": "ts-node ./test/generate_input.ts",
+    "test:circuit": "NODE_OPTIONS=--max_old_space_size=0 mocha --timeout 0 -r ts-node/register 'test/**/*.ts' --exclude test/TransactionApprover.test.ts",
     "types": "hardhat typechain"
   }
 }

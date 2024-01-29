@@ -96,8 +96,6 @@ template Base64Encode(N) {
         third[1] = 0;
         b64_character[M-1] = Bits2Num(6);
         b64_character[M-1].in <== third;
-        log("hmm");
-        log(b64_character[M-1].out);
 
         out[M-3] <== encodeCharacter()(b64_character[M-3].out);
         out[M-2] <== encodeCharacter()(b64_character[M-2].out);
