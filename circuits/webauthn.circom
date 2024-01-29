@@ -136,6 +136,7 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_c
 
   signal message_hash_mod_p[k] <== message_hash_modder.mod;
 
+  // Verify the signature
   component ecdsa = ECDSAVerifyNoPubkeyCheck(n, k);
   ecdsa.r <== r;
   ecdsa.s <== s;

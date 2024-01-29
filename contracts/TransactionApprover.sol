@@ -1,6 +1,9 @@
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./webauthn_verifier.sol";
+
+import "hardhat/console.sol";
 
 contract TransactionApprover is Groth16Verifier {
   struct Account {
@@ -45,34 +48,43 @@ contract TransactionApprover is Groth16Verifier {
   /// @param signer The x-coordinate of the account sending the transaction
   function execute(
     uint256 signer,
-    address to,
+    address target,
     bytes calldata data,
     uint256 nonce,
     ProofArgs calldata args
-  ) external {
+  ) external returns (bool) {
     //bytes memory signer_bytes = new bytes(32);
-    bytes memory to_bytes = new bytes(32);
+    bytes memory target_bytes = new bytes(32);
     bytes memory nonce_bytes = new bytes(32);
     assembly {
       //mstore(add(signer_bytes, 32), signer)
-      mstore(add(to_bytes, 32), to)
+      mstore(add(target_bytes, 32), target)
       mstore(add(nonce_bytes, 32), nonce)
     }
-    bytes memory preimage = bytes.concat(to_bytes, data, nonce_bytes);
+    bytes memory preimage = bytes.concat(target_bytes, data, nonce_bytes);
 
     bytes32 hash = sha256(preimage);
 
     // The challenge is the lowest 248 bits
-    uint256 challenge = uint256(hash) & 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    uint256 challenge = uint256(hash) & (2**248-1);
     require(challenge == args.pubSignals[12], "Challenges dont match");
 
     uint256[2] memory pubkey = accounts[signer].pubkey;
     if (pubkey[0] == 0) {
-      // Return without success
+      return false;
     }
 
-    // TODO: Check pubkey matches the proofArgs 
-
-    verifyProof(args._pA, args._pB, args._pC, args.pubSignals);
+    uint[6][2] memory registers = pubkeyToRegisters(pubkey);
+    for (uint i = 0; i < 2; i++) {
+      for (uint j = 0; j < 6; j++) {
+        if (registers[i][j] != args.pubSignals[i*6+j]) {
+          return false;
+        }
+      }
+    }
+    require(this.verifyProof(args._pA, args._pB, args._pC, args.pubSignals), "Proof failed");
+    
+    (bool res) = abi.decode(Address.functionCall(target, data), (bool));
+    return res;
   }
 }
