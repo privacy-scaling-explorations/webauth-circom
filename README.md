@@ -43,6 +43,18 @@ After that verification, the requested transaction is executed.
 ### Compiling
 After all the dependencies have been sync'd, you run `generate_verifier.sh` inside of the `scripts/` folder. This will compile the circuit, generate test keys and generate the solidity verifier inside of `contracts/`.
 
+### Benchmarks
+All benchmarks were run on an AMD 7700x, 32GB RAM desktop. The `max_auth_data_bytes` is 64 and `max_client_data_bytes` is 256.
+
+| Constraints | 2811775 |
+| Circuit compilation | 71s |
+| Trusted setup phase 2 key generation | 565s |
+| Trusted setup phase 2 contribution | 138s |
+| Proving key size | 1.7G |
+| Witness generation | 78s |
+| Proving time | 42s |
+| Proof verification time | 1s |
+
 ## Testing
 Given that webauthn's focus is for browser-based authentication, the tests rely on hardcoded test data with assertions generated from a [virtual authenticator](https://gramthanos.github.io/WebDevAuthn/credential-get.html).
 

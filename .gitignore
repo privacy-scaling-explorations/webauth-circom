@@ -19,3 +19,5 @@ INTERNAL.md
 
 *.r1cs
 *.ptau
+
+contracts/webauthn_verifier.sol
