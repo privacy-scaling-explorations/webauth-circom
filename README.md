@@ -46,6 +46,8 @@ After all the dependencies have been sync'd, you run `generate_verifier.sh` insi
 ### Benchmarks
 All benchmarks were run on an AMD 7700x, 32GB RAM desktop. The `max_auth_data_bytes` is 64 and `max_client_data_bytes` is 256.
 
+|  |  |
+|---|---|
 | Constraints | 2811775 |
 | Circuit compilation | 71s |
 | Trusted setup phase 2 key generation | 565s |
