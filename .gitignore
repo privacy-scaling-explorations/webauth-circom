@@ -11,6 +11,13 @@ circuits/*.r1cs
 circuits/*.vkey.json
 circuits/*.wasm
 circuits/*.zkey
-contracts/*.sol
 
 build/
+types/
+
+INTERNAL.md
+
+*.r1cs
+*.ptau
+
+contracts/webauthn_verifier.sol

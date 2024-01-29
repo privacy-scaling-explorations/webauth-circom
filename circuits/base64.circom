@@ -1,108 +1,137 @@
-pragma circom 2.0.3;
+pragma circom 2.1.6;
 
 include "../node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/mux2.circom";
 
-// http://0x80.pl/notesen/2016-01-17-sse-base64-decoding.html#vector-lookup-base
-template Base64Lookup() {
+function output_size(N) {
+    var M = 4*N\3;
+    if (N % 3 != 0) {
+        M += 1;
+    }
+    return M;
+}
+
+template Base64Encode(N) {
+    var M = output_size(N);
+    signal input in[N];
+    signal output out[M];
+
+    component bits[N];
+    component b64_character[M];
+    for (var i = 0; i < N; i++) {
+        bits[i] = Num2Bits(8);
+        bits[i].in <== in[i];
+    }
+
+    var full_limbs = N\3;
+    for (var i = 0; i < full_limbs; i++) {
+        var first[6];
+        for (var j = 0; j < 6; j++) first[5-j] = bits[i*3].out[7-j];
+
+        var second[6];
+        second[5] = bits[i*3].out[1];
+        second[4] = bits[i*3].out[0];
+        for (var j = 0; j < 4; j++) second[3-j] = bits[i*3+1].out[7-j];
+
+        var third[6];
+        for (var j = 0; j < 4; j++) third[5-j] = bits[i*3+1].out[3-j];
+        third[1] = bits[i*3+2].out[7];
+        third[0] = bits[i*3+2].out[6];
+
+        var fourth[6];
+        for (var j = 0; j < 6; j++) fourth[5-j] = bits[i*3+2].out[5-j];
+
+        b64_character[i*4] = Bits2Num(6);
+        b64_character[i*4].in <== first;
+
+        b64_character[i*4+1] = Bits2Num(6);
+        b64_character[i*4+1].in <== second;
+
+        b64_character[i*4+2] = Bits2Num(6);
+        b64_character[i*4+2].in <== third;
+
+        b64_character[i*4+3] = Bits2Num(6);
+        b64_character[i*4+3].in <== fourth;
+
+        out[i*4] <== encodeCharacter()(b64_character[i*4].out);
+        out[i*4+1] <== encodeCharacter()(b64_character[i*4+1].out);
+        out[i*4+2] <== encodeCharacter()(b64_character[i*4+2].out);
+        out[i*4+3] <== encodeCharacter()(b64_character[i*4+3].out);
+    }
+
+    var full_consumed = 3*full_limbs;
+    if (N-full_consumed == 1) {
+        var first[6];
+        for (var j = 0; j < 6; j++) first[5-j] = bits[N-1].out[7-j];
+        b64_character[M-2] = Bits2Num(6);
+        b64_character[M-2].in <== first;
+
+        var second[6];
+        for (var j = 0; j < 2; j++) second[5-j] = bits[N-1].out[1-j];
+        second[3] = 0;
+        second[2] = 0;
+        second[1] = 0;
+        second[0] = 0;
+
+        b64_character[M-1] = Bits2Num(6);
+        b64_character[M-1].in <== second;
+
+        out[M-2] <== encodeCharacter()(b64_character[M-2].out);
+        out[M-1] <== encodeCharacter()(b64_character[M-1].out);
+    } else if (N-full_consumed == 2) {
+        var first[6];
+        for (var j = 0; j < 6; j++) first[5-j] = bits[N-2].out[7-j];
+        b64_character[M-3] = Bits2Num(6);
+        b64_character[M-3].in <== first;
+
+        var second[6];
+        for (var j = 0; j < 2; j++) second[5-j] = bits[N-2].out[1-j];
+        for (var j = 0; j < 4; j++) second[3-j] = bits[N-1].out[7-j];
+        b64_character[M-2] = Bits2Num(6);
+        b64_character[M-2].in <== second;
+
+        var third[6];
+        for (var j = 0; j < 4; j++) third[5-j] = bits[N-1].out[3-j];
+        third[0] = 0;
+        third[1] = 0;
+        b64_character[M-1] = Bits2Num(6);
+        b64_character[M-1].in <== third;
+
+        out[M-3] <== encodeCharacter()(b64_character[M-3].out);
+        out[M-2] <== encodeCharacter()(b64_character[M-2].out);
+        out[M-1] <== encodeCharacter()(b64_character[M-1].out);
+    }
+}
+
+
+template encodeCharacter() {
     signal input in;
     signal output out;
 
-    // ['A', 'Z']
-    component le_Z = LessThan(8);
-    le_Z.in[0] <== in;
-    le_Z.in[1] <== 90+1;
-    
-    component ge_A = GreaterThan(8);
-    ge_A.in[0] <== in;
-    ge_A.in[1] <== 65-1;
-    
-    signal range_AZ <== ge_A.out * le_Z.out;
-    signal sum_AZ <== range_AZ * (in - 65);
+    component lt_Z = LessThan(6);
+    lt_Z.in[0] <== in;
+    lt_Z.in[1] <== 26;
 
-    // ['a', 'z']
-    component le_z = LessThan(8);
-    le_z.in[0] <== in;
-    le_z.in[1] <== 122+1;
-    
-    component ge_a = GreaterThan(8);
-    ge_a.in[0] <== in;
-    ge_a.in[1] <== 97-1;
-    
-    signal range_az <== ge_a.out * le_z.out;
-    signal sum_az <== sum_AZ + range_az * (in - 71);
+    component lt_z = LessThan(6);
+    lt_z.in[0] <== in;
+    lt_z.in[1] <== 52;
 
-    // ['0', '9']
-    component le_9 = LessThan(8);
-    le_9.in[0] <== in;
-    le_9.in[1] <== 57+1;
-    
-    component ge_0 = GreaterThan(8);
-    ge_0.in[0] <== in;
-    ge_0.in[1] <== 48-1;
-    
-    signal range_09 <== ge_0.out * le_9.out;
-    signal sum_09 <== sum_az + range_09 * (in + 4);
+    component lt_9 = LessThan(6);
+    lt_9.in[0] <== in;
+    lt_9.in[1] <== 62;
 
-    // '+'
-    component equal_plus = IsZero();
-    equal_plus.in <== in - 43;
-    signal sum_plus <== sum_09 + equal_plus.out * (in + 19);
+    component eq_plus = IsEqual();
+    eq_plus.in[0] <== in;
+    eq_plus.in[1] <== 62;
 
-    // '/'
-    component equal_slash = IsZero();
-    equal_slash.in <== in - 47;
-    signal sum_slash <== sum_plus + equal_slash.out * (in + 16);
+    component eq_underscore = IsEqual();
+    eq_underscore.in[0] <== in;
+    eq_underscore.in[1] <== 63;
 
-    out <== sum_slash;
-}
+    signal uppercase <== lt_Z.out * (in+65);
+    signal lowercase <== (lt_z.out - lt_Z.out) * (in+71); // in-26+97
+    signal number <== (lt_9.out - lt_z.out) * (in-4); //in-52+48
+    signal special <== (eq_plus.out * 45) + (eq_underscore.out * 95);
 
-template Base64Decode(N) {
-    var M = 4*((N+2)\3);
-    signal input in[M];
-    signal output out[N];
-
-    component bits_in[M\4][4];
-    component bits_out[M\4][3];
-    component translate[M\4][4];
-
-    var idx = 0;
-    for (var i = 0; i < M; i += 4) {
-        for (var j = 0; j < 3; j++) {
-            bits_out[i\4][j] = Bits2Num(8);
-        }
-        
-        for (var j = 0; j < 4; j++) {
-            bits_in[i\4][j] = Num2Bits(6);
-            translate[i\4][j] = Base64Lookup();
-            translate[i\4][j].in <== in[i+j];
-            translate[i\4][j].out ==> bits_in[i\4][j].in;
-        }
-
-        // Do the re-packing from four 6-bit words to three 8-bit words.
-        for (var j = 0; j < 6; j++) {
-            bits_out[i\4][0].in[j+2] <== bits_in[i\4][0].out[j];
-        }
-        bits_out[i\4][0].in[0] <== bits_in[i\4][1].out[4];
-        bits_out[i\4][0].in[1] <== bits_in[i\4][1].out[5];
-
-        for (var j = 0; j < 4; j++) {
-            bits_out[i\4][1].in[j+4] <== bits_in[i\4][1].out[j];
-        }
-        for (var j = 0; j < 4; j++) {
-            bits_out[i\4][1].in[j] <== bits_in[i\4][2].out[j+2];
-        }
-
-        bits_out[i\4][2].in[6] <== bits_in[i\4][2].out[0];
-        bits_out[i\4][2].in[7] <== bits_in[i\4][2].out[1];
-        for (var j = 0; j < 6; j++) {
-            bits_out[i\4][2].in[j] <== bits_in[i\4][3].out[j];
-        }
-
-        for (var j = 0; j < 3; j++) {
-            if (idx+j < N) {
-                out[idx+j] <== bits_out[i\4][j].out;
-            }
-        }
-        idx += 3;
-    }
+    out <== uppercase + lowercase + number + special;
 }
