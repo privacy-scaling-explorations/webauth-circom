@@ -3,6 +3,7 @@ pragma circom 2.1.6;
 include "../node_modules/circomlib/circuits/comparators.circom";
 include "../node_modules/circomlib/circuits/mux2.circom";
 
+/// Calculate the number of bytes a base64 encoding takes for N bytes
 function output_size(N) {
     var M = 4*N\3;
     if (N % 3 != 0) {
@@ -11,6 +12,7 @@ function output_size(N) {
     return M;
 }
 
+/// Encode N bytes as base64, outputting the M byte encoding
 template Base64Encode(N) {
     var M = output_size(N);
     signal input in[N];
@@ -103,7 +105,7 @@ template Base64Encode(N) {
     }
 }
 
-
+/// Encode a single 6-bit signal as a base64 character
 template encodeCharacter() {
     signal input in;
     signal output out;

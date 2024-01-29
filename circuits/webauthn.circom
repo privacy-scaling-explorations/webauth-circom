@@ -1,7 +1,6 @@
 pragma circom 2.1.6;
 
 include "../node_modules/circomlib/circuits/sha256/sha256.circom";
-//include "../node_modules/circomlib/circuits/mux1.circom";
 
 include "./sha256flex.circom";
 include "./ecdsa/ecdsa.circom";
@@ -9,25 +8,27 @@ include "./webauthn_json_hardcodes.circom";
 include "./utils.circom";
 include "./base64.circom";
 
-// Challenge is the hash of the transaction data
-// NOTE: Challenge must be exactly 252 bits
-
+/// Verifies a Webauthn authentication assertion according to https://www.w3.org/TR/webauthn-2/#sctn-verifying-assertion
+/// n - The bitsize of each register for ECC values
+/// k - The number of registers representing an ECC value
+/// max_auth_data_bytes - The maximum number of bytes that the authData field can have
+/// max_client_data_bytes - The maximum number of bytes the clientDataJSON can have
+/// size_challenge_bytes - The number of bytes in the signed challenge
+///
+/// NOTE: For max_auth_data_bytes and max_client_data_bytes, you MUST pad the corresponding
+///       input signals to this size
 template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_challenge_bytes) {
   /// Private Inputs
   signal input r[k];
   signal input s[k];
   signal input auth_data_num_bytes;
-  signal input auth_data[max_auth_data_bytes]; // Each signal is a byte
+  signal input auth_data[max_auth_data_bytes];
   signal input client_data_num_bytes;
   signal input client_data[max_client_data_bytes];
 
   /// Public Inputs
   signal input pubkey[2][k];
-  signal input challenge;   // Challenge is 252 bits as we chop off 4 bits of the hash of the tx data
-  //signal input origin;      // Should be padded to 212 bits
-  //signal input signCount;   // C.signCount (if we use this, should probably be public?)
-  //signal input rpId;
-  //signal input rpIdHash[2];  // TODO: I think rpId and rpIdHash can be constants
+  signal input challenge;   // Hash of transaction data. Of size size_challenge_bytes
 
   // 13. Verify that the value of C.origin matches the Relying Party's origin.
   // - NOT NEEDED
@@ -61,7 +62,6 @@ template WebAuthnVerify(n, k, max_auth_data_bytes, max_client_data_bytes, size_c
   // Verify the challenge is in the client data (which signs the base64 encoding)
   component challenge_encoder = Base64Encode(size_challenge_bytes);
   challenge_encoder.in <== challenge_bytes.out;
-
   for (var i = 0; i < output_size(size_challenge_bytes); i++) {
     challenge_encoder.out[i] - client_data[36+i] === 0;
   }

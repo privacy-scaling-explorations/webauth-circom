@@ -3,7 +3,15 @@ This project provides a circuit that verifies the ECDSA signature of a p256 [web
 
 Given the wide-spread deployment of the NIST P-256 curve due to its standardization and [reccomendation](https://csrc.nist.gov/pubs/sp/800/186/final), a majority of modern devices contain some form of secure element that can perform P-256 signatures with a private key that does not leave the secure hardware.
 
-This circuit depends on the [circom-ecdsa-p256](https://github.com/privacy-scaling-explorations/circom-ecdsa-p256) circuit for the signature verification which uses [circom-pairing](https://github.com/yi-sun/circom-pairing) for ECC arithmetic. These files have been copied over and provided in the `circuits/` folder in order to avoid the complexities of gitmodules.
+This circuit has a few dependencies:
+- [circom-ecdsa-p256](https://github.com/privacy-scaling-explorations/circom-ecdsa-p256) for the signature verification which uses
+- [circom-pairing](https://github.com/yi-sun/circom-pairing) for ECC arithmetic.
+- [circom-sha256flex](https://github.com/SleepingShell/circom-sha256flex) for flexible input length sha256 hashing
+
+These files have been copied over and provided in the `circuits/` folder in order to avoid the complexities of gitmodules.
+
+## A note on implementation
+For the time being, rpIDhHash is not verified within the circuit. The motivation is that authenticators should be creating unique credentials for every rpID, so it shouldn't be signing messages with our desired public key if they aren't truly destined for us. I am open to feedback for this.
 
 ## Motivation
 Ethereum ECDSA signatures with normal EOA accounts can only utilize the [secp256k1](https://neuromancer.sk/std/secg/secp256k1), which has seen little adoption outside of cryptocurrency related projects. With the introduction and continued development of [account abstraction](https://ethereum.org/en/roadmap/account-abstraction) standards within Ethereum, alternative authentication flows are enabled for users.

@@ -2,7 +2,7 @@ pragma circom 2.1.5;
 
 include "../node_modules/circomlib/circuits/comparators.circom";
 
-// Sum over all the inputs
+/// Sum over all the inputs
 template Sum(n) {
   signal input in[n];
   signal output out;
@@ -16,7 +16,7 @@ template Sum(n) {
   out <== sum[n-1];
 }
 
-// Convert a signal to a byte array. n is the number of bytes of the signal
+/// Convert a signal to a byte array. n is the number of bytes of the signal
 template Num2Bytes(n) {
   signal input in;
   signal output out[n];
@@ -34,7 +34,7 @@ template Num2Bytes(n) {
   }
 }
 
-// Concatanate two arrays: The first array which is in size of [min_first,max_first] and a second array with static size
+/// Concatanate two arrays: The first array which is in size of [min_first,max_first] and a second array with static size
 template concatenate_arrays(min_first, max_first, size_second) {
   signal input first[max_first];      // Input as bits
   signal input second[size_second];   // Input as bits
@@ -46,7 +46,6 @@ template concatenate_arrays(min_first, max_first, size_second) {
   // Put the bits that will always be from the first
   for (var i = 0; i < min_first; i++) out[i] <== first[i];
 
-  //var bits_left = total_size-min_first;
   var possible_first = max_first-min_first; // The number of bits that can be either apart of first or second
   component in_first[possible_first];
   component summers[possible_first];
