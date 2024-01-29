@@ -3,7 +3,7 @@ This project provides a circuit that verifies the ECDSA signature of a p256 [web
 
 Given the wide-spread deployment of the NIST P-256 curve due to its standardization and [reccomendation](https://csrc.nist.gov/pubs/sp/800/186/final), a majority of modern devices contain some form of secure element that can perform P-256 signatures with a private key that does not leave the secure hardware.
 
-This circuit depends on the [circom-ecdsa-p256](https://github.com/privacy-scaling-explorations/circom-ecdsa-p256) circuit for the signature verification.
+This circuit depends on the [circom-ecdsa-p256](https://github.com/privacy-scaling-explorations/circom-ecdsa-p256) circuit for the signature verification which uses [circom-pairing](https://github.com/yi-sun/circom-pairing) for ECC arithmetic. These files have been copied over and provided in the `circuits/` folder in order to avoid the complexities of gitmodules.
 
 ## Motivation
 Ethereum ECDSA signatures with normal EOA accounts can only utilize the [secp256k1](https://neuromancer.sk/std/secg/secp256k1), which has seen little adoption outside of cryptocurrency related projects. With the introduction and continued development of [account abstraction](https://ethereum.org/en/roadmap/account-abstraction) standards within Ethereum, alternative authentication flows are enabled for users.
@@ -36,8 +36,6 @@ After we have proven the correct webauthn assertion of the public key signing th
 After that verification, the requested transaction is executed.
 
 ## Install
-- Run `git pull --recurse-submodules`
-- Run `git submodule update --init --recursive` to grab the ECDSA dependencies
 - Run `yarn` to install dependencies
 
 ### Compiling
