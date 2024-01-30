@@ -5,8 +5,7 @@ include "../node_modules/circomlib/circuits/sha256/sha256compression.circom";
 include "../node_modules/circomlib/circuits/mux2.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
 
-include "./utils.circom";
-
+/// Format the input to the sha256 function correctly
 template Sha256Input(nBits) {
   assert(nBits % 64 == 0);
   var nBlocks = ((nBits + 64)\512)+1;
@@ -81,6 +80,26 @@ template Sha256Input(nBits) {
   }
 }
 
+/// Calculate the number of sha256 blocks the in amount of bytes requires
+template numBlocks() {
+  signal input in;
+  signal output out;
+
+  out <-- ((in+64)\512)+1;
+
+  component lt = LessEqThan(252);
+  lt.in[0] <== (out-1)*512;
+  lt.in[1] <== in+512;
+
+  component gt = GreaterEqThan(252);
+  gt.in[0] <== out*512;
+  gt.in[1] <== in+64;
+
+  lt.out === 1;
+  gt.out === 1;
+}
+
+/// Flexible sha256 circuit, fed in bits
 template Sha256Flexible(nBits) {
   assert(nBits % 512 == 0);
   var nBlocks = ((nBits + 64)\512)+1;
@@ -88,7 +107,7 @@ template Sha256Flexible(nBits) {
   signal input in_num_bits;
   signal output out[256];
 
-  var nBlocks_in = ((in_num_bits + 64)\512)+1;
+  signal nBlocks_in <== numBlocks()(in_num_bits);
 
   signal paddingInput[nBlocks*512];
   for (var i = 0; i < nBits; i++) paddingInput[i] <== in[i];
@@ -102,17 +121,18 @@ template Sha256Flexible(nBits) {
 
   component hasher = Sha256Function(nBlocks);
   hasher.in <== bits;
-  hasher.endBlock <-- nBlocks_in-1;// FIXME THIS IS UNCONSTRAINED
+  hasher.endBlock <== nBlocks_in-1;
   out <== hasher.out;
 }
 
+/// Flexible sha256 circuit, fed in bytes
 template Sha256FlexibleBytes(nBytes) {
   var nBlocks = ((nBytes + 8)\64)+1;
   signal input in[nBytes];
   signal input in_num_bytes;
   signal output out[256];
 
-  var nBlocks_in = ((in_num_bytes + 8)\64)+1;
+  signal nBlocks_in <== numBlocks()(in_num_bytes*8);
   
   signal paddedBytes[nBlocks*64];
   for (var i = 0; i < nBytes; i++) paddedBytes[i] <== in[i];
@@ -135,10 +155,11 @@ template Sha256FlexibleBytes(nBytes) {
 
   component hasher = Sha256Function(nBlocks);
   hasher.in <== bits;
-  hasher.endBlock <-- nBlocks_in-1;// FIXME THIS IS UNCONSTRAINED
+  hasher.endBlock <== nBlocks_in-1;
   out <== hasher.out;
 }
 
+/// Perform the actual sha256 hashing and then select the correct output block
 template Sha256Function(nBlocks) {
   signal input in[nBlocks*512];
   signal input endBlock;
