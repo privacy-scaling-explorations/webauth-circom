@@ -89,7 +89,7 @@ template numBlocks() {
 
   component lt = LessEqThan(252);
   lt.in[0] <== (out-1)*512;
-  lt.in[1] <== in+512;
+  lt.in[1] <== in+64;
 
   component gt = GreaterEqThan(252);
   gt.in[0] <== out*512;
